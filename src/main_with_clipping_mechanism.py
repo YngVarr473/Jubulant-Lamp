@@ -4,9 +4,6 @@ import random
 import psutil
 import os
 import numpy as np
-import hashlib
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import ctypes
 
 # Initialize Pygame
 pygame.init()
@@ -38,127 +35,36 @@ def load_image(file_name, size):
     except pygame.error as e:
         raise RuntimeError(f"Error loading image {file_path}: {e}")
 
-# Load and resize images efficiently using ThreadPoolExecutor
-def load_images():
-    with ThreadPoolExecutor() as executor:
-        futures = {
-            executor.submit(load_image, "center.png", (tile_size, tile_size)): "grass_image",
-            executor.submit(load_image, "water.png", (tile_size, tile_size)): "water_image",
-            executor.submit(load_image, "forest.png", (tile_size, tile_size)): "forest_image",
-            executor.submit(load_image, "rock_big.png", (tile_size, tile_size)): "rock_big_image",
-            executor.submit(load_image, "rock_medium.png", (tile_meidum_size, tile_meidum_size)): "rock_medium_image",
-            executor.submit(load_image, "romashka_big.png", (tile_small_size, tile_small_size)): "romasha_big_image",
-            executor.submit(load_image, "flower2_big.png", (tile_small_size, tile_small_size)): "flower2_big_image",
-            executor.submit(load_image, "bush_big.png", (tile_small_size, tile_small_size)): "bush_big_image",
-            executor.submit(load_image, "Character/w1.png", (player_size, player_size)): "character_w1_image",
-            executor.submit(load_image, "Character/w2.png", (player_size, player_size)): "character_w2_image",
-            executor.submit(load_image, "Character/w3.png", (player_size, player_size)): "character_w3_image",
-            executor.submit(load_image, "Character/w4.png", (player_size, player_size)): "character_w4_image",
-            executor.submit(load_image, "Character/w5.png", (player_size, player_size)): "character_w5_image",
-            executor.submit(load_image, "Character/w6.png", (player_size, player_size)): "character_w6_image",
-            executor.submit(load_image, "Character/r1.png", (player_size, player_size)): "character_r1_image",
-            executor.submit(load_image, "Character/r2.png", (player_size, player_size)): "character_r2_image",
-            executor.submit(load_image, "Character/s1.png", (player_size, player_size)): "character_s1_image",  # Idle sprite
-        }
-        images = {}
-        for future in as_completed(futures):
-            key = futures[future]
-            images[key] = future.result()
-        return images
+# Load and resize images efficiently
+grass_image= sand_image = load_image("center.png", (tile_size, tile_size))
+water_image = load_image("water.png", (tile_size, tile_size))
+forest_image = load_image("forest.png", (tile_size, tile_size))
+rock_big_image = load_image("rock_big.png", (tile_size, tile_size))
+rock_medium_image = load_image("rock_medium.png", (tile_meidum_size, tile_meidum_size))
+romasha_big_image = load_image("romashka_big.png", (tile_small_size, tile_small_size))
+flower2_big_image = load_image("flower2_big.png", (tile_small_size, tile_small_size))
+bush_big_image = load_image("bush_big.png", (tile_small_size, tile_small_size))
 
-images = load_images()
-grass_image = sand_image = images["grass_image"]
-water_image = images["water_image"]
-forest_image = images["forest_image"]
-rock_big_image = images["rock_big_image"]
-rock_medium_image = images["rock_medium_image"]
-romasha_big_image = images["romasha_big_image"]
-flower2_big_image = images["flower2_big_image"]
-bush_big_image = images["bush_big_image"]
-
-# Character sprites
-character_images = [
-    images["character_w1_image"],
-    images["character_w2_image"],
-    images["character_w3_image"],
-    images["character_w4_image"],
-    images["character_w5_image"],
-    images["character_w6_image"]
-]
-
-# Function to calculate the hash of all files in the asset directory
-def calculate_hash_of_files(directory):
-    hash_md5 = hashlib.md5()
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            file_path = os.path.join(root, file)
-            with open(file_path, 'rb') as f:
-                for chunk in iter(lambda: f.read(4096), b""):
-                    hash_md5.update(chunk)
-    return hash_md5.hexdigest()
-
-# Calculate the hash of all files in the asset directory
-file_hash = calculate_hash_of_files('.')
-
+# Player class
 class Player(pygame.sprite.Sprite):
     def __init__(self, map_data, tile_size):
         super().__init__()
-        self.walk_images = character_images  # Original walking animation frames
-        self.run_images = [
-            images["character_r1_image"],
-            images["character_r2_image"]
-        ]  # Running animation frames
-        self.idle_image = images["character_s1_image"]  # Idle sprite
-        self.down_images = [
-            load_image("Character/d1.png", (player_size, player_size)),
-            load_image("Character/d2.png", (player_size, player_size)),
-            load_image("Character/d3.png", (player_size, player_size)),
-            load_image("Character/d4.png", (player_size, player_size)),
-            load_image("Character/d5.png", (player_size, player_size)),
-            load_image("Character/d6.png", (player_size, player_size))
-        ]  # Down animation frames
-        self.up_images = [
-            load_image("Character/u1.png", (player_size, player_size)),
-            load_image("Character/u2.png", (player_size, player_size)),
-            load_image("Character/u3.png", (player_size, player_size)),
-            load_image("Character/u4.png", (player_size, player_size)),
-            load_image("Character/u5.png", (player_size, player_size)),
-            load_image("Character/u6.png", (player_size, player_size))
-        ]  # Up animation frames
-        self.images = self.walk_images  # Start with walking animation
-        self.index = 0
-        self.image = self.images[self.index]
+        self.image = pygame.Surface((player_size, player_size))
+        self.image.fill(player_color)
         self.rect = self.image.get_rect()
         self.rect.center = (map_width * tile_size // 2, map_height * tile_size // 2)  # Start in the center of the map
         self.map_data = map_data
         self.tile_size = tile_size
-        self.animation_speed = 10  # Speed of the animation in frames
-        self.animation_counter = 0
-        self.flipped = False  # Track the flip state
-        self.current_direction = None  # Track the current direction
-        self.running = False  # Track if the player is running
-        self.moving = False  # Track if the player is moving
-        self.speed = player_speed  # Normal walking speed
-        self.run_speed = player_speed * 2  # Running speed
-
     def update(self, keys_pressed):
         new_x, new_y = self.rect.x, self.rect.y
-        new_direction = None
-
-        current_speed = self.run_speed if keys_pressed[pygame.K_LSHIFT] or keys_pressed[pygame.K_RSHIFT] else self.speed
-
         if keys_pressed[pygame.K_LEFT]:
-            new_x -= current_speed
-            new_direction = 'left'
+            new_x -= player_speed
         if keys_pressed[pygame.K_RIGHT]:
-            new_x += current_speed
-            new_direction = 'right'
+            new_x += player_speed
         if keys_pressed[pygame.K_UP]:
-            new_y -= current_speed
-            new_direction = 'up'
+            new_y -= player_speed
         if keys_pressed[pygame.K_DOWN]:
-            new_y += current_speed
-            new_direction = 'down'
+            new_y += player_speed
 
         # Check if the new position is on a water tile
         player_bottom_y = (new_y + player_size) // self.tile_size
@@ -172,59 +78,6 @@ class Player(pygame.sprite.Sprite):
                 self.map_data[player_bottom_y][player_right_x] != 0):
                 self.rect.x = new_x
                 self.rect.y = new_y
-
-        # Update animation
-        self.animation_counter += 1
-        if self.animation_counter >= self.animation_speed:
-            self.animation_counter = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
-
-        # Flip the image based on the direction change
-        if new_direction != self.current_direction:
-            self.current_direction = new_direction
-            if new_direction == 'left':
-                self.images = self.walk_images
-                self.flipped = False
-            elif new_direction == 'right':
-                self.images = self.walk_images
-                self.flipped = True
-            elif new_direction == 'down':
-                self.images = self.down_images
-                self.index = 0
-            elif new_direction == 'up':
-                self.images = self.up_images
-                self.index = 0
-
-        # Apply the flip state to the image
-        if self.flipped:
-            self.image = pygame.transform.flip(self.images[self.index], True, False)
-        else:
-            self.image = self.images[self.index]
-
-        # Handle running animation
-        if keys_pressed[pygame.K_LSHIFT] or keys_pressed[pygame.K_RSHIFT]:
-            if not self.running:
-                self.running = True
-                self.images = self.run_images
-                self.index = 0
-        else:
-            if self.running:
-                self.running = False
-                if self.current_direction == 'down':
-                    self.images = self.down_images
-                elif self.current_direction == 'up':
-                    self.images = self.up_images
-                else:
-                    self.images = self.walk_images
-                self.index = 0
-
-        # Check if the player is moving
-        self.moving = new_direction is not None
-
-        # Set the image to the idle sprite if not moving
-        if not self.moving:
-            self.image = self.idle_image
 
 # Camera class
 class Camera:
@@ -279,7 +132,7 @@ class Map:
                 if map_matrix[i][j] == 2 and random.random() < 0.03:  # 5% chance to place a rock on grass
                     map_matrix[i][j] = 5  # Rock tile
 
-                if map_matrix[i][j] == 2 and random.random() < 0.01:  # 1% chance to place a romasha big on grass
+                if map_matrix[i][j] == 2 and random.random() < 0.02:  # 1% chance to place a romasha big on grass
                     map_matrix[i][j] = 6  # romasha_big tile
                 if map_matrix[i][j] == 2 and random.random() < 0.02:  # 1% chance to place a flower2 big on grass
                     map_matrix[i][j] = 7  # flower2_big tile
@@ -316,20 +169,40 @@ class Map:
         return props_surface
 
     def generate_mapv2(self):
-        # Load the C library
-        map_generator = ctypes.CDLL('./map_generator.so')
+        map_matrix = np.zeros((self.height, self.width), dtype=int)
 
-        # Define the argument and return types
-        map_generator.generate_map.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.c_int, ctypes.c_int]
-        map_generator.generate_map.restype = None
+        # Initialize the map with water tiles around the borders
+        map_matrix[0, :] = 0
+        map_matrix[-1, :] = 0
+        map_matrix[:, 0] = 0
+        map_matrix[:, -1] = 0
+        map_matrix[1:-1, 1:-1] = 2  # Grass tile (temporary, will be overwritten)
 
-        # Create a numpy array to hold the map data
-        map_data = np.zeros((self.height, self.width), dtype=np.int32)
+        # Generate the rest of the map
+        for i in range(1, self.height - 1):
+            for j in range(1, self.width - 1):
+                tile = random.randint(0, 10)  # Generate a random number between 0 and 10
+                if tile < 2:  # 20% chance for water
+                    map_matrix[i, j] = 0
+                elif tile < 5:  # 30% chance for sand
+                    map_matrix[i, j] = 1
+                else:  # 50% chance for grass
+                    map_matrix[i, j] = 2
 
-        # Call the C function
-        map_generator.generate_map(map_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int)), self.width, self.height)
-
-        return map_data
+        # Remove isolated water tiles
+        for i in range(1, self.height - 1):
+            for j in range(1, self.width - 1):
+                if map_matrix[i, j] == 0:
+                    neighbors = [
+                        (i-1, j), (i+1, j), (i, j-1), (i, j+1)
+                    ]
+                    has_water_neighbor = any(
+                        0 <= ni < self.height and 0 <= nj < self.width and map_matrix[ni, nj] == 0
+                        for ni, nj in neighbors
+                    )
+                    if not has_water_neighbor:
+                        map_matrix[i, j] = 2  # Replace isolated water with grass
+        return map_matrix
 
     def create_map_surface(self):
         map_surface = pygame.Surface((self.width * self.tile_size, self.height * self.tile_size), pygame.SRCALPHA)
@@ -350,8 +223,45 @@ class Map:
         return map_surface
 
     def draw(self, screen, camera):
-        screen.blit(self.map_surface, camera.apply(self.map_surface.get_rect()))
-        screen.blit(self.props_surface, camera.apply(self.props_surface.get_rect()))
+        # Calculate the visible area
+        start_x = max(0, -camera.camera.x // self.tile_size)
+        end_x = min(self.width, (start_x + camera.width // self.tile_size) + 1)
+        start_y = max(0, -camera.camera.y // self.tile_size)
+        end_y = min(self.height, (start_y + camera.height // self.tile_size) + 1)
+
+        # Draw the visible tiles
+        for y in range(start_y, end_y):
+            for x in range(start_x, end_x):
+                rect = pygame.Rect(x * self.tile_size, y * self.tile_size, self.tile_size, self.tile_size)
+                if self.map_data[y][x] == 1:
+                    image = sand_image
+                elif self.map_data[y][x] == 2:
+                    image = grass_image
+                elif self.map_data[y][x] == 0:
+                    image = water_image
+                else:
+                    continue
+                screen.blit(image, camera.apply(rect))
+
+        # Draw the props layer
+        for y in range(start_y, end_y):
+            for x in range(start_x, end_x):
+                rect = pygame.Rect(x * self.tile_size, y * self.tile_size, self.tile_size, self.tile_size)
+                if self.props_data[y][x] == 3:
+                    image = forest_image
+                elif self.props_data[y][x] == 4:
+                    image = rock_big_image
+                elif self.props_data[y][x] == 5:
+                    image = rock_medium_image
+                elif self.props_data[y][x] == 6:
+                    image = romasha_big_image
+                elif self.props_data[y][x] == 7:
+                    image = flower2_big_image
+                elif self.props_data[y][x] == 8:
+                    image = bush_big_image
+                else:
+                    continue
+                screen.blit(image, camera.apply(rect))
 
 # Game class
 class Game:
@@ -370,7 +280,6 @@ class Game:
 
         self.camera = Camera(self.width, self.height)
 
-        self.start_time = pygame.time.get_ticks()  # Track the start time
         self.__update()
 
     def __eventHandler(self):
@@ -387,18 +296,6 @@ class Game:
         self.map.draw(self.screen, self.camera)
         for sprite in self.all_sprites:
             self.screen.blit(sprite.image, self.camera.apply(sprite.rect))
-
-        # Draw the file hash on the left bottom of the screen
-        font = pygame.font.Font(None, 24)
-        hash_text = font.render(f"build-hash: {file_hash}", True, (255, 255, 255))
-        self.screen.blit(hash_text, (10, self.height - 30))
-
-        # Draw the in-game time in the top-right corner
-        elapsed_time = (pygame.time.get_ticks() - self.start_time) // 1000  # Convert milliseconds to seconds
-        hours = elapsed_time // 60
-        minutes = elapsed_time % 60
-        time_text = font.render(f"{hours:02}:{minutes:02}", True, (255, 255, 255))
-        self.screen.blit(time_text, (self.width - 60, 10))
 
     def __update(self):
         clock = pygame.time.Clock()
