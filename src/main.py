@@ -371,6 +371,7 @@ class Game:
         self.camera = Camera(self.width, self.height)
 
         self.start_time = pygame.time.get_ticks()  # Track the start time
+        self.current_phase = "Day"  # Initialize the phase
         self.__update()
 
     def __eventHandler(self):
@@ -400,6 +401,10 @@ class Game:
         time_text = font.render(f"{hours:02}:{minutes:02}", True, (255, 255, 255))
         self.screen.blit(time_text, (self.width - 60, 10))
 
+        # Draw the current phase
+        phase_text = font.render(f"Phase: {self.current_phase}", True, (255, 255, 255))
+        self.screen.blit(phase_text, (self.width - 160, 40))
+
     def __update(self):
         clock = pygame.time.Clock()
         font = pygame.font.Font(None, 36)
@@ -410,6 +415,17 @@ class Game:
             self.camera.update(self.player)
             self.screen.fill(self.background_color)
             self.__draw()
+
+            # Update the current phase based on the elapsed time
+            elapsed_time = (pygame.time.get_ticks() - self.start_time) // 1000  # Convert milliseconds to seconds
+            if elapsed_time % 50 < 15:
+                self.current_phase = "Day"
+            elif elapsed_time % 50 < 25:
+                self.current_phase = "Dusk"
+            elif elapsed_time % 50 < 35:
+                self.current_phase = "Night"
+            elif elapsed_time % 50 < 45:
+                self.current_phase = "Dawn"
 
             # Display FPS and CPU/GPU usage
             fps = clock.get_fps()
