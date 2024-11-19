@@ -43,6 +43,56 @@ SDL_Texture* loadImage(SDL_Renderer* renderer, const std::string& filePath, int&
     return texture;
 }
 
+
+SDL_Surface* scaleSurface(SDL_Surface* surface, int width, int height) {
+    SDL_Surface* scaledSurface = SDL_CreateRGBSurface(0, width, height, 32,
+                                                     0x00FF0000,
+                                                     0x0000FF00,
+                                                     0x000000FF,
+                                                     0xFF000000);
+    if (!scaledSurface) {
+        std::cerr << "Could not create scaled surface: " << SDL_GetError() << std::endl;
+        return nullptr;
+    }
+
+    SDL_SoftStretch(surface, nullptr, scaledSurface, nullptr);
+    return scaledSurface;
+}
+
+SDL_Cursor* createCustomCursor(const char* imagePath, int hotspotX, int hotspotY, int scale) {
+    SDL_Surface* surface = IMG_Load(imagePath);
+    if (!surface) {
+        std::cerr << "Could not load cursor image: " << IMG_GetError() << std::endl;
+        return nullptr;
+    }
+
+    // Scale the surface
+    int scaledWidth = surface->w * scale;
+    int scaledHeight = surface->h * scale;
+    SDL_Surface* scaledSurface = scaleSurface(surface, scaledWidth, scaledHeight);
+    SDL_FreeSurface(surface); // Free the original surface
+
+    if (!scaledSurface) {
+        return nullptr;
+    }
+
+    // Check if the hotspot coordinates are within the bounds of the image
+    if (hotspotX < 0 || hotspotX >= scaledSurface->w || hotspotY < 0 || hotspotY >= scaledSurface->h) {
+        std::cerr << "Hotspot coordinates are out of bounds." << std::endl;
+        SDL_FreeSurface(scaledSurface);
+        return nullptr;
+    }
+
+    SDL_Cursor* cursor = SDL_CreateColorCursor(scaledSurface, hotspotX * scale, hotspotY * scale);
+    SDL_FreeSurface(scaledSurface); // Free the scaled surface after creating the cursor
+
+    if (!cursor) {
+        std::cerr << "Could not create cursor: " << SDL_GetError() << std::endl;
+    }
+
+    return cursor;
+}
+
 class Camera {
 public:
     Camera(int viewportWidth, int viewportHeight, int mapWidth, int mapHeight)
@@ -169,7 +219,6 @@ public:
         }
     }
 
-
     int getX() const { return x; }
     int getY() const { return y; }
     int getWidth() const { return width; }
@@ -178,20 +227,21 @@ public:
     void setMoving(bool moving) {
         isMoving = moving;
     }
+
     bool isPlayerInView(int cameraX, int cameraY, int viewportWidth, int viewportHeight, float zoomLevel) {
-    int playerX = x;
-    int playerY = y;
-    int playerWidth = width * 2;
-    int playerHeight = height * 2;
+        int playerX = x;
+        int playerY = y;
+        int playerWidth = width * 2;
+        int playerHeight = height * 2;
 
-    int viewX = cameraX;
-    int viewY = cameraY;
-    int viewWidth = viewportWidth / zoomLevel;
-    int viewHeight = viewportHeight / zoomLevel;
+        int viewX = cameraX;
+        int viewY = cameraY;
+        int viewWidth = viewportWidth / zoomLevel;
+        int viewHeight = viewportHeight / zoomLevel;
 
-    return !(playerX + playerWidth < viewX || playerX > viewX + viewWidth ||
-             playerY + playerHeight < viewY || playerY > viewY + viewHeight);
-}
+        return !(playerX + playerWidth < viewX || playerX > viewX + viewWidth ||
+                 playerY + playerHeight < viewY || playerY > viewY + viewHeight);
+    }
 
 private:
     void loadTextures() {
@@ -234,8 +284,6 @@ private:
     Uint32 lastFrameTime;
     std::string direction;
 };
-
-
 
 class Map {
 public:
@@ -328,9 +376,8 @@ public:
         int viewHeight = viewportHeight / zoomLevel;
 
         return !(tileX + tileWidth < viewX || tileX > viewX + viewWidth ||
-                tileY + tileHeight < viewY || tileY > viewY + viewHeight);
+                 tileY + tileHeight < viewY || tileY > viewY + viewHeight);
     }
-
 
 private:
     std::vector<std::vector<int>> generateMap() {
@@ -431,10 +478,9 @@ private:
     std::vector<std::vector<int>> mapData;
     std::vector<std::vector<int>> propsData;
 };
-
 class Game {
 public:
-    Game() : width(800), height(600), running(true), lastFrameTime(0), deltaTime(0.0f) {
+    Game(bool enableImGui = false) : width(800), height(600), running(true), lastFrameTime(0), deltaTime(0.0f), enableImGui(enableImGui) {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
             std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
             exit(1);
@@ -450,13 +496,24 @@ public:
             exit(1);
         }
 
+        // Initialize SDL_image
+        int imgFlags = IMG_INIT_PNG;
+        SDL_Init(SDL_INIT_VIDEO);
+        if (!(IMG_Init(imgFlags) & imgFlags)) {
+            std::cerr << "SDL_image could not initialize! SDL_image Error: " << IMG_GetError() << std::endl;
+            exit(1);
+        }
+
         // Initialize ImGui
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
-        ImGui::StyleColorsDark();
-        ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-        ImGui_ImplSDLRenderer2_Init(renderer);
+        if (enableImGui) {
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            ImGuiIO& io = ImGui::GetIO(); (void)io;
+            ImGui::StyleColorsDark();
+            ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+            ImGui_ImplSDLRenderer2_Init(renderer);
+            ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+        }
 
         // Initialize Python interpreter
         Py_Initialize();
@@ -476,10 +533,16 @@ public:
         } else {
             buildHash = "Unknown";
         }
+        SDL_ShowCursor(SDL_ENABLE);
 
-        // Redirect stdout and stderr to the terminal
-        std::freopen("terminal_output.txt", "w", stdout);
-        std::freopen("terminal_output.txt", "w", stderr);
+        customCursor = createCustomCursor("../Assets/Cursors/back/back6.png", 0, 0);
+        mouseDownCursor = createCustomCursor("../Assets/Cursors/back/back5.png", 0, 0);
+        if (customCursor) {
+            SDL_SetCursor(customCursor);
+            SDL_Log("Custom cursor set successfully.");
+        } else {
+            SDL_Log("Failed to set custom cursor.");
+        }
     }
 
     ~Game() {
@@ -487,14 +550,18 @@ public:
         delete player;
         delete player2; // Clean up the second player
         delete camera;
+        SDL_FreeCursor(customCursor);
+        SDL_FreeCursor(mouseDownCursor);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
 
         // Cleanup ImGui
-        ImGui_ImplSDLRenderer2_Shutdown();
-        ImGui_ImplSDL2_Shutdown();
-        ImGui::DestroyContext();
+        if (enableImGui) {
+            ImGui_ImplSDLRenderer2_Shutdown();
+            ImGui_ImplSDL2_Shutdown();
+            ImGui::DestroyContext();
+        }
 
         // Finalize Python interpreter
         Py_Finalize();
@@ -551,8 +618,18 @@ private:
                 } else if (e.wheel.y < 0) {
                     camera->adjustZoom(-0.1f); // Zoom out
                 }
+            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    SDL_SetCursor(mouseDownCursor);
+                }
+            } else if (e.type == SDL_MOUSEBUTTONUP) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    SDL_SetCursor(customCursor);
+                }
             }
-            ImGui_ImplSDL2_ProcessEvent(&e);
+            if (enableImGui) {
+                ImGui_ImplSDL2_ProcessEvent(&e);
+            }
         }
     }
 
@@ -600,68 +677,71 @@ private:
         // Reset the scale to 1.0 for ImGui rendering
         SDL_RenderSetScale(renderer, 1.0f, 1.0f);
 
-        // Start the ImGui frame
-        ImGui_ImplSDLRenderer2_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
+        if (enableImGui) {
+            // Start the ImGui frame
+            ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+            ImGui_ImplSDLRenderer2_NewFrame();
+            ImGui_ImplSDL2_NewFrame();
+            ImGui::NewFrame();
 
-        // Create an ImGui window
-        ImGui::Begin("Game Info");
-        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-        ImGui::Text("CPU Usage: %.1f%%", getCPUUsage());
-        ImGui::Text("GPU Usage: %.1f%%", getGPUUsage());
-        ImGui::Text("Current Phase: %s", currentPhase.c_str());
+            // Create an ImGui window
+            ImGui::Begin("Game Info");
+            ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+            ImGui::Text("CPU Usage: %.1f%%", getCPUUsage());
+            ImGui::Text("GPU Usage: %.1f%%", getGPUUsage());
+            ImGui::Text("Current Phase: %s", currentPhase.c_str());
 
-        // Get the current window size
-        int windowWidth, windowHeight;
-        SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-        ImGui::Text("Window Size: %dx%d", windowWidth, windowHeight);
+            // Get the current window size
+            int windowWidth, windowHeight;
+            SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+            ImGui::Text("Window Size: %dx%d", windowWidth, windowHeight);
 
-        // Get the player position
-        ImGui::Text("Player Position: (%d, %d)", playerX, playerY);
+            // Get the player position
+            ImGui::Text("Player Position: (%d, %d)", playerX, playerY);
 
-        // Get the mouse position and direction
-        int mouseX, mouseY;
-        Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
-        std::string mouseDirection = getMouseDirection(mouseX, mouseY, playerX, playerY);
-        ImGui::Text("Mouse Direction: %s", mouseDirection.c_str());
+            // Get the mouse position and direction
+            int mouseX, mouseY;
+            Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
+            std::string mouseDirection = getMouseDirection(mouseX, mouseY, playerX, playerY);
+            ImGui::Text("Mouse Direction: %s", mouseDirection.c_str());
 
-        // Get the current game time
-        Uint32 elapsedTime = SDL_GetTicks() - startTime;
-        int days = elapsedTime / (1000 * 60 * 60 * 24);
-        int hours = (elapsedTime / (1000 * 60 * 60)) % 24;
-        int minutes = (elapsedTime / (1000 * 60)) % 60;
-        int seconds = (elapsedTime / 1000) % 60;
-        ImGui::Text("Game Time: %02d:%02d:%02d:%02d", days, hours, minutes, seconds);
+            // Get the current game time
+            Uint32 elapsedTime = SDL_GetTicks() - startTime;
+            int days = elapsedTime / (1000 * 60 * 60 * 24);
+            int hours = (elapsedTime / (1000 * 60 * 60)) % 24;
+            int minutes = (elapsedTime / (1000 * 60)) % 60;
+            int seconds = (elapsedTime / 1000) % 60;
+            ImGui::Text("Game Time: %02d:%02d:%02d:%02d", days, hours, minutes, seconds);
 
-        ImGui::End();
+            ImGui::End();
 
-        // Display the build hash at the left bottom corner
-        ImGui::SetNextWindowPos(ImVec2(10, height - 30));
-        ImGui::SetNextWindowSize(ImVec2(600, 20));
-        ImGui::Begin("Build Hash", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
-        ImGui::Text("Build Hash: %s", buildHash.c_str());
-        ImGui::End();
+            // Display the build hash at the left bottom corner
+            ImGui::SetNextWindowPos(ImVec2(10, height - 30));
+            ImGui::SetNextWindowSize(ImVec2(600, 20));
+            ImGui::Begin("Build Hash", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
+            ImGui::Text("Build Hash: %s", buildHash.c_str());
+            ImGui::End();
 
-        // Display the terminal window
-        ImGui::SetNextWindowSize(ImVec2(width / 2, height / 2), ImGuiCond_FirstUseEver);
-        ImGui::Begin("Terminal");
-        ImGui::TextUnformatted(terminalOutput.c_str());
+            // Display the terminal window
+            ImGui::SetNextWindowSize(ImVec2(width / 2, height / 2), ImGuiCond_FirstUseEver);
+            ImGui::Begin("Terminal");
+            ImGui::TextUnformatted(terminalOutput.c_str());
 
-        // Input field for Python commands
-        static char pythonCommand[256] = "";
-        ImGui::InputText("Python Command", pythonCommand, IM_ARRAYSIZE(pythonCommand));
-        ImGui::SameLine();
-        if (ImGui::Button("Execute")) {
-            executePythonCommand(pythonCommand);
-            memset(pythonCommand, 0, sizeof(pythonCommand));  // Clear the input field
+            // Input field for Python commands
+            static char pythonCommand[256] = "";
+            ImGui::InputText("Python Command", pythonCommand, IM_ARRAYSIZE(pythonCommand));
+            ImGui::SameLine();
+            if (ImGui::Button("Execute")) {
+                executePythonCommand(pythonCommand);
+                memset(pythonCommand, 0, sizeof(pythonCommand));  // Clear the input field
+            }
+
+            ImGui::End();
+
+            // Rendering
+            ImGui::Render();
+            ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         }
-
-        ImGui::End();
-
-        // Rendering
-        ImGui::Render();
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
 
         SDL_RenderPresent(renderer);
     }
@@ -717,6 +797,30 @@ private:
         return;
     }
 
+    SDL_Cursor* createCustomCursor(const char* imagePath, int hotspotX, int hotspotY) {
+        SDL_Surface* surface = IMG_Load(imagePath);
+        if (!surface) {
+            SDL_Log("Could not load cursor image: %s", IMG_GetError());
+            return nullptr;
+        }
+
+        // Check if the hotspot coordinates are within the bounds of the image
+        if (hotspotX < 0 || hotspotX >= surface->w || hotspotY < 0 || hotspotY >= surface->h) {
+            SDL_Log("Hotspot coordinates are out of bounds.");
+            SDL_FreeSurface(surface);
+            return nullptr;
+        }
+
+        SDL_Cursor* cursor = SDL_CreateColorCursor(surface, hotspotX, hotspotY);
+        SDL_FreeSurface(surface); // Free the surface after creating the cursor
+
+        if (!cursor) {
+            SDL_Log("Could not create cursor: %s", SDL_GetError());
+        }
+
+        return cursor;
+    }
+
     int width;
     int height;
     bool running;
@@ -732,4 +836,7 @@ private:
     std::string currentPhase;
     std::string buildHash;  // Store the build hash
     std::string terminalOutput;  // Store the terminal output
+    SDL_Cursor* customCursor;
+    SDL_Cursor* mouseDownCursor;  // Add this member variable
+    bool enableImGui;  // Add this member variable
 };

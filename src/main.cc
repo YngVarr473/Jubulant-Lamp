@@ -1,8 +1,13 @@
 #include "./core.hh"
 
 int main(int argc, char* argv[]) {
-    std::srand(std::time(0));
-    Game game;
+    bool enableImGui = false;
+    if (argc > 1 && std::string(argv[1]) == "--enable-imgui") {
+        enableImGui = true;
+    }
+
+    Game game(enableImGui);
     game.run();
+
     return 0;
 }
