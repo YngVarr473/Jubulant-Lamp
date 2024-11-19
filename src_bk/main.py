@@ -403,11 +403,11 @@ class Game:
 
         # Draw the current phase
         phase_text = font.render(f"Phase: {self.current_phase}", True, (255, 255, 255))
-        self.screen.blit(phase_text, (self.width - 160, 40))
+        self.screen.blit(phase_text, (self.width - 160, 10))
 
     def __update(self):
         clock = pygame.time.Clock()
-        font = pygame.font.Font(None, 36)
+        font = pygame.font.Font(None, 24)
         while self.running:
             self.__eventHandler()
             keys_pressed = pygame.key.get_pressed()
