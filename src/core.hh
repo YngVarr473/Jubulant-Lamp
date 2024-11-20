@@ -16,9 +16,9 @@
 #include <ctime>
 #include <cmath>
 #include <sstream>  // Include this header for std::stringstream
-#include "imgui.h"
-#include "imgui_impl_sdl2.h"
-#include "imgui_impl_sdlrenderer2.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_sdl2.h"
+#include "imgui/imgui_impl_sdlrenderer2.h"
 #include <Python.h>  // Include the Python header
 
 const int GRASS_TILE_SIZE = 64;
