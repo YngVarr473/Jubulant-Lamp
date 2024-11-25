@@ -1,4 +1,4 @@
-#include "./core.hh"
+#include "./Game.hpp"
 
 int main(int argc, char* argv[]) {
     bool enableImGui = false;
