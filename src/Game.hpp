@@ -37,7 +37,7 @@ public:
             std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
             exit(1);
         }
-        window = SDL_CreateWindow("Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        window = SDL_CreateWindow("Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
         if (window == nullptr) {
             std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
             exit(1);
@@ -55,6 +55,17 @@ public:
             std::cerr << "SDL_image could not initialize! SDL_image Error: " << IMG_GetError() << std::endl;
             exit(1);
         }
+        
+        SDL_GLContext glContext = SDL_GL_CreateContext(window);
+        if (glContext == nullptr) {
+            std::cerr << "OpenGL context could not be created! SDL_Error: " << SDL_GetError() << std::endl;
+            exit(1);
+        }
+        glewExperimental = GL_TRUE;
+        GLenum err = glewInit();
+        if (GLEW_OK != err) {
+            std::cerr << "Error: " << glewGetErrorString(err) << std::endl;
+        }
 
         // Initialize ImGui
         if (enableImGui) {
@@ -64,23 +75,31 @@ public:
             ImGui::StyleColorsDark();
             ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
             ImGui_ImplSDLRenderer2_Init(renderer);
-            //ImGui::SetMouseCursor(ImGuiMouseCursor_None);
-            //
-            ImGuiStyle& style = ImGui::GetStyle();
 
             // Customize colors
+            ImGuiStyle& style = ImGui::GetStyle();
             style.Colors[ImGuiCol_WindowBg] = ImVec4(245.0f / 255.0f, 245.0f /255.0f, 220.0f / 255.0f, 1.0f); // Background color
-            style.Colors[ImGuiCol_TitleBg] = ImVec4(175.0f / 255.0f, 128.0f/255.0f, 79.0f/255.0f, 1.0f); // Title bar background color
-            style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.3f, 0.3f, 0.3f, 1.0f); // Active title bar background color
-            style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f); // Collapsed title bar background color
-            
+            //style.Colors[ImGuiCol_TitleBg] = ImVec4(245.0f / 255.0f, 245.0f/255.0f, 220.0f/255.0f, 1.0f); // Title bar background color
+            style.Colors[ImGuiCol_TitleBgActive] = ImVec4(172.0f / 255.0f, 128.0f / 255.0f, 79.0f/255.0f, 1.0f); // Active title bar background color
+            style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(245.0f/255.0f, 245.0f/255.0f, 220.0f/255.0f, 1.0f); // Collapsed title bar background color
+
             // Customize font
             style.Colors[ImGuiCol_Text] = ImVec4(175.0f/255.0f, 128.0f/255.0f, 79.0f/255.0f, 1.0f);
+
+            // Set the desired font size here
+            float fontSize = 20.0f; // Change this value to your desired font size
+            ImFontConfig config;
+            config.SizePixels = fontSize;
+
+            io.Fonts->AddFontDefault(&config);
+            io.Fonts->Build();
+
             // Customize window padding
             style.WindowPadding = ImVec2(8.0f, 8.0f);
             style.WindowRounding = 5.0f; // Rounded corners
             style.WindowBorderSize = 1.0f; // Border size
         }
+
 
 
         map = new Map(renderer, MAP_WIDTH, MAP_HEIGHT, GRASS_TILE_SIZE);
@@ -248,7 +267,7 @@ private:
             ImGui::NewFrame();
 
             // Create an ImGui window
-            ImGui::Begin("Game Info");
+            ImGui::Begin("Main Engine Controller");
             ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
             ImGui::Text("CPU Usage: %.1f%%", getCPUUsage());
             ImGui::Text("GPU Usage: %.1f%%", getGPUUsage());
@@ -275,12 +294,11 @@ private:
             int minutes = (elapsedTime / (1000 * 60)) % 60;
             int seconds = (elapsedTime / 1000) % 60;
             ImGui::Text("Game Time: %02d:%02d:%02d:%02d", days, hours, minutes, seconds);
-
             ImGui::End();
 
             // Display the build hash at the left bottom corner
             ImGui::SetNextWindowPos(ImVec2(10, height - 30));
-            ImGui::SetNextWindowSize(ImVec2(600, 20));
+            ImGui::SetNextWindowSize(ImVec2(600, 50));
             ImGui::Begin("Build Hash", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
             ImGui::Text("Build Hash: %s", buildHash.c_str());
             ImGui::End();

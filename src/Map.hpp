@@ -1,7 +1,101 @@
 #ifndef MAP_HPP
 #define MAP_HPP
 
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <GL/glew.h>
+#include <iostream>
+#include <vector>
+#include <cstdlib>
 
+// Function to read shader source from file
+std::string ReadShaderSource(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open shader file: " << filePath << std::endl;
+        return "";
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+// Function to compile shader
+GLuint CompileShader(GLenum type, const std::string& source) {
+    GLuint shader = glCreateShader(type);
+    const char* src = source.c_str();
+    glShaderSource(shader, 1, &src, nullptr);
+    glCompileShader(shader);
+
+    GLint success;
+    GLchar infoLog[512];
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    return shader;
+}
+
+// Function to create shader program
+GLuint CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath) {
+    std::string vertexSource = ReadShaderSource(vertexPath);
+    std::string fragmentSource = ReadShaderSource(fragmentPath);
+
+    GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexSource);
+    GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentSource);
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    GLint success;
+    GLchar infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return shaderProgram;
+}
+// Function to load and compile shader
+GLuint LoadShader(const char* vertex_path, const char* fragment_path) {
+    // Load vertex shader
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    // Load vertex shader source code
+    // Compile vertex shader
+
+    // Load fragment shader
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    // Load fragment shader source code
+    // Compile fragment shader
+
+    // Create shader program
+    GLuint shader_program = glCreateProgram();
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
+
+    // Check for linking errors
+    GLint success;
+    GLchar infoLog[512];
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shader_program, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+
+    // Clean up
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    return shader_program;
+}
 class Map {
 public:
     Map(SDL_Renderer* renderer, int width, int height, int tileSize)
@@ -17,6 +111,9 @@ public:
         bush1Texture= loadImage(renderer, "../Assets/bush_big.png", waterWidth, waterHeight);
         mapData = generateMap();
         propsData = generateProps(mapData);
+
+        // Load shader
+        shaderProgram = LoadShader("./shaders/vertex_shader.vert", "./shaders/grass_shader.frag");
     }
 
     ~Map() {
@@ -29,6 +126,7 @@ public:
         SDL_DestroyTexture(flower1Texture);
         SDL_DestroyTexture(flower2texture);
         SDL_DestroyTexture(bush1Texture);
+        glDeleteProgram(shaderProgram);
     }
 
     void draw(SDL_Renderer* renderer, int cameraX, int cameraY, int viewportWidth, int viewportHeight, float zoomLevel) {
@@ -44,7 +142,11 @@ public:
                     if (mapData[y][x] == 0) {
                         SDL_RenderCopy(renderer, waterTexture, nullptr, &destRect);
                     } else if (mapData[y][x] == 2) {
+                        // Use shader for grass texture
+                        glUseProgram(shaderProgram);
+                        glUniform2f(glGetUniformLocation(shaderProgram, "iResolution"), viewportWidth, viewportHeight);
                         SDL_RenderCopy(renderer, grassTexture, nullptr, &destRect);
+                        glUseProgram(0);
                     } else if (mapData[y][x] == 1) {
                         SDL_RenderCopy(renderer, grassTexture, nullptr, &destRect);
                     }
@@ -95,8 +197,6 @@ public:
         return !(tileX + tileWidth < viewX || tileX > viewX + viewWidth ||
                  tileY + tileHeight < viewY || tileY > viewY + viewHeight);
     }
-
-
 
 private:
     std::vector<std::vector<int>> generateMap() {
@@ -196,7 +296,6 @@ private:
     int waterHeight;
     std::vector<std::vector<int>> mapData;
     std::vector<std::vector<int>> propsData;
+    GLuint shaderProgram;
 };
-
-
 #endif
