@@ -2,44 +2,6 @@
 #define MAP_HPP
 
 
-typedef struct Map {
-    SDL_Texture* grassTexture;
-    SDL_Texture* waterTexture;
-
-    SDL_Texture* forestTexture;
-    SDL_Texture* rockBigTexture;
-    SDL_Texture* rockMediumTexture;
-    SDL_Texture* flower1Texture;
-    SDL_Texture* flower2Texture;
-    SDL_Texture* bush1Texture;
-
-    int map_views[4][10][10];
-    int props_views[4][10][10];
-    int width, height;
-    int tileSize;
-    int grassWidth, grassHeight;
-};
-
-
-Map* initMap(SDL_Renderer* renderer, int width, int height, int tileSize) {
-    Map* map = (Map*)malloc(sizeof(Map));
-    map->renderer = renderer;
-    map->width = width;
-    map->height = height;
-    map->grassTexture = loadImage(renderer, "../Assets/grass.png", 64, 64);
-    map->waterTexture = loadImage(renderer, "../Assets/water.png", 64, 64);
-    map->forestTexture = loadImage(renderer, "../Assets/forest.png", 64, 64);
-
-    map->rockBigTexture = loadImage(renderer, "../Assets/rock_big.png", 64, 64);
-    map->rockMediumTexture = loadImage(renderer, "../Assets/rock_meidum.png", 64, 64);
-    map->flower1Texture = loadImage(renderer, "../Assets/romashka_big.png", 64, 64);
-    map->flower2Texture = loadImage(renderer, "../Assets/flower2_big.png", 64, 64);
-    map->bush1Texture = loadImage(renderer, "../Assets/bush_big.png", 64, 64);
-}
-
-
-
-/*
 class Map {
 public:
     Map(SDL_Renderer* renderer, int width, int height, int tileSize)
@@ -236,6 +198,5 @@ private:
     std::vector<std::vector<int>> propsData;
 };
 
-*/
 
 #endif

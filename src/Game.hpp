@@ -64,7 +64,22 @@ public:
             ImGui::StyleColorsDark();
             ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
             ImGui_ImplSDLRenderer2_Init(renderer);
-            ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+            //ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+            //
+            ImGuiStyle& style = ImGui::GetStyle();
+
+            // Customize colors
+            style.Colors[ImGuiCol_WindowBg] = ImVec4(245.0f / 255.0f, 245.0f /255.0f, 220.0f / 255.0f, 1.0f); // Background color
+            style.Colors[ImGuiCol_TitleBg] = ImVec4(175.0f / 255.0f, 128.0f/255.0f, 79.0f/255.0f, 1.0f); // Title bar background color
+            style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.3f, 0.3f, 0.3f, 1.0f); // Active title bar background color
+            style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.4f, 0.4f, 0.4f, 1.0f); // Collapsed title bar background color
+            
+            // Customize font
+            style.Colors[ImGuiCol_Text] = ImVec4(175.0f/255.0f, 128.0f/255.0f, 79.0f/255.0f, 1.0f);
+            // Customize window padding
+            style.WindowPadding = ImVec2(8.0f, 8.0f);
+            style.WindowRounding = 5.0f; // Rounded corners
+            style.WindowBorderSize = 1.0f; // Border size
         }
 
 
@@ -218,7 +233,7 @@ private:
         SDL_RenderSetViewport(renderer, nullptr);
 
         map->draw(renderer, zoomedCameraX, zoomedCameraY, width, height, zoomLevel);
-        //map->draw_props(renderer, zoomedCameraX, zoomedCameraY, width, height, zoomLevel);
+        map->draw_props(renderer, zoomedCameraX, zoomedCameraY, width, height, zoomLevel);
         player->draw(zoomedCameraX, zoomedCameraY, width, height, deltaTime, zoomLevel);
         player2->draw(zoomedCameraX, zoomedCameraY, width, height, deltaTime, zoomLevel); // Draw the second player
 
@@ -227,7 +242,7 @@ private:
 
         if (enableImGui) {
             // Start the ImGui frame
-            ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+            //ImGui::SetMouseCursor(ImGuiMouseCursor_None);
             ImGui_ImplSDLRenderer2_NewFrame();
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
