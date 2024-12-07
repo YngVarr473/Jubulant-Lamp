@@ -1,6 +1,5 @@
 #define PLANE_HPP_
 #include "./includes.hpp"
-
 class Plane {
 public:
     glm::vec3 position;

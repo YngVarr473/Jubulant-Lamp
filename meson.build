@@ -7,7 +7,13 @@ glu_dep = dependency('glu')
 gl_dep = dependency('GL')
 #cglm_dep = dependency('cglm', fallback : ['cglm', 'cglm_dep'])
 glm_dep = dependency('glm', fallback: ['glm', 'glm_dep'])
-
+add_global_arguments(['-Wall',
+                      '-Wno-pointer-sign',
+                      '-Wno-deprecated-declarations',
+                      '-Wno-unused',
+                      '-Wno-incompatible-pointer-types',
+                      '-Wno-discarded-qualifiers'],
+                     language: 'cpp')
 cmake = import('cmake')
 compiler = meson.get_compiler('cpp')
 assimp_opt = cmake.subproject_options()

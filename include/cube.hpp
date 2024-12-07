@@ -1,7 +1,6 @@
 #define CUBE_HPP_
 #include "./includes.hpp"
 
-
 class Cube {
 public:
     glm::vec3 position;
@@ -99,10 +98,4 @@ public:
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 };
-
-class Cube
-{
-
-}
-
 
