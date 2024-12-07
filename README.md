@@ -1,5 +1,4 @@
-<div align="center"><h1>Jubulant-Lamp</h1></div>
-
+<div align="center"><image src="./Assets/s1.png" width="150px"/><h1>Jubulant-Lamp</h1></div>
 <div align="center" >
   <image src="https://github.com/0xBLCKLPTN/Jubulant-Lamp/blob/master/Docs/preview.gif" width="900px">
 </div>
