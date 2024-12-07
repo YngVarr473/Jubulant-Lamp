@@ -17,96 +17,7 @@
 
 #include "../include/cube.hpp"
 #include "../include/plane.hpp"
-
-struct Vertex {
-    glm::vec3 Position;
-    glm::vec3 Normal;
-    glm::vec2 TexCoords;
-};
-
-struct Mesh {
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
-    GLuint VAO, VBO, EBO;
-
-    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
-        : vertices(vertices), indices(indices) {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-
-        glBindVertexArray(VAO);
-
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Position));
-        glEnableVertexAttribArray(0);
-
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
-        glEnableVertexAttribArray(1);
-
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-        glEnableVertexAttribArray(2);
-
-        glBindVertexArray(0);
-    }
-
-    void Draw(Shader &shader) {
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-    }
-};
-
-Mesh loadModel(const std::string &path) {
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
-
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-        std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
-        return Mesh({}, {});
-    }
-
-    if (scene->mNumMeshes == 0) {
-        std::cerr << "ERROR::ASSIMP::No meshes found in the model" << std::endl;
-        return Mesh({}, {});
-    }
-
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
-
-    aiMesh* mesh = scene->mMeshes[0];
-    if (!mesh) {
-        std::cerr << "ERROR::ASSIMP::Mesh is null" << std::endl;
-        return Mesh({}, {});
-    }
-
-    for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
-        Vertex vertex;
-        vertex.Position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
-        vertex.Normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
-        if (mesh->mTextureCoords[0]) {
-            vertex.TexCoords = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
-            //std::cout << "UV Coord: " << vertex.TexCoords.x << ", " << vertex.TexCoords.y << std::endl;
-        } else {
-            vertex.TexCoords = glm::vec2(0.0f, 0.0f);
-        }
-        vertices.push_back(vertex);
-    }
-
-    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-        aiFace face = mesh->mFaces[i];
-        for (unsigned int j = 0; j < face.mNumIndices; j++)
-            indices.push_back(face.mIndices[j]);
-    }
-
-    return Mesh(vertices, indices);
-}
-
+#include "../include/mesh.hpp"
 
 enum Camera_Movement {
     FORWARD,
@@ -130,7 +41,7 @@ public:
     float MouseSensitivity;
     float Zoom;
 
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = -90.0f, float pitch = 0.0f)
+    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = -90.1f, float pitch = -28.3f)
         : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(2.5f), MouseSensitivity(0.1f), Zoom(45.0f) {
         Position = position;
         WorldUp = up;
@@ -161,7 +72,6 @@ public:
 
         Yaw += xoffset;
         Pitch += yoffset;
-
         if (constrainPitch) {
             if (Pitch > 89.0f)
                 Pitch = 89.0f;
@@ -194,7 +104,7 @@ private:
 };
 
 // Global camera object
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 9.84f, 14.36f));
 
 // Callback function for framebuffer resize
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -261,7 +171,6 @@ GLuint loadTexture(const char* path) {
     std::cout << "Loaded texture: " << path << " with ID: " << textureID << std::endl;
     return textureID;
 }
-
 
 int main() {
     // Инициализация GLFW
@@ -358,7 +267,7 @@ int main() {
     // Создание плоскости
     Plane plane(glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 1.0f, 10.0f), 0);
 
-    Mesh humanModel = loadModel("../Assets/Objects/human/human.obj");
+    Mesh humanModel = loadModel("../Assets/rigged_human.obj");
     std::cout << "Model loaded!" << std::endl;
     Mesh wolfModel = loadModel("../Assets/Objects/wolf/obj/Wolf_obj.obj");
     std::cout << "Model loaded!" << std::endl;
@@ -367,6 +276,9 @@ int main() {
     GLuint wolfBodyTexture = loadTexture("../Assets/Objects/wolf/obj/textures/Wolf_Body.jpg");
     GLuint wolfEyesTexture = loadTexture("../Assets/Objects/wolf/obj/textures/Wolf_Eyes_2.jpg");
     GLuint wolfFurTexture = loadTexture("../Assets/Objects/wolf/obj/textures/Wolf_Fur.jpg");
+
+    // Load texture for the plane
+    GLuint planeTexture = loadTexture("../Assets/skin_texture.jpg");
 
     // Time of day variable
     float timeOfDay = 0.5f; // 0.0 for night, 1.0 for day
@@ -415,7 +327,7 @@ int main() {
         modelShader.setMat4("projection", projection);
         glm::mat4 model = glm::mat4(1.0f); // Identity matrix for the model
         model = glm::translate(model, glm::vec3(-1.0f, -1.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(0.07f, 0.07f, 0.07f)); // FIXME: scale factor = ...
+        model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f)); // FIXME: scale factor = ...
         modelShader.setMat4("model", model);
         humanModel.Draw(modelShader);
         // HUMAN MODEL
@@ -446,8 +358,6 @@ int main() {
 
         // WOLF MODEL
 
-
-
         shader.use();
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
@@ -475,6 +385,12 @@ int main() {
         float pixelSize = 0.001f; // You can adjust this value to change the pixelation effect
         shader.setFloat("pixelSize", pixelSize);
         shader.setFloat("timeOfDay", timeOfDay); // Set the time of day
+
+        // Bind the plane texture
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, planeTexture);
+        shader.setInt("texture1", 0);
+
         plane.draw(shader);
 
         // Рисование обводки только в областях перекрытия
