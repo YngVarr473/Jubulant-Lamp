@@ -5,6 +5,10 @@
 </div>
 This is a beta version of the game.It already has textures of earth and water, animations, time, phases of day and night. 7 people are working on this game.Here is not only the C++ programming language, but also Python. For testing some game mechanics
 
+<div align="center">
+  <image src="./Docs/screen1.png"/>
+</div>
+
 # Build and run:
 
 ### Linux or MacOS
